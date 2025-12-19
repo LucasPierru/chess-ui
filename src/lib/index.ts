@@ -1,5 +1,10 @@
+export enum Color {
+  WHITE = 'w',
+  BLACK = 'b'
+}
+
 // place files you want to import through the `$lib` alias in this folder.
-export const translateFen = (fen: string): string[][] => {
+export const translateFen = (fen: string, color = Color.WHITE): string[][] => {
   const rows = fen.split(' ')[0].split('/');
   const symbolToPiece: { [key: string]: string } = {
     'r': 'br',
@@ -31,5 +36,5 @@ export const translateFen = (fen: string): string[][] => {
     return result;
   })
 
-  return board;
+  return color === Color.WHITE ? board.reverse() : board;
 }
