@@ -1,12 +1,14 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
   import type { Client, Subscription } from "stompjs";
-
+  import store from "$lib/stores/playerStore.js";
   import { translateFen, Color } from "$lib";
 
   let { data } = $props();
   let boardFen = $state("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
   let boardVersion = $state(0);
+  let playerColor: Color | null = null;
+  let isPlayer = false;
   let isReady = false;
 
   const letters = ["a", "b", "c", "d", "e", "f", "g", "h"];
@@ -16,6 +18,8 @@
   let stompClient: Client | null = null;
   let subscription: Subscription | null = null;
   let currentRoom: string;
+
+  const playerId = $store;
 
   onMount(async () => {
     const Stomp = (await import("stompjs")).default;
@@ -87,8 +91,16 @@
   }
 
   function connectWebSocket() {
-    stompClient!.connect({}, function (frame) {
-      console.log("Connected: " + frame);
+    stompClient!.connect({ playerId }, function (frame) {
+      subscription = stompClient!.subscribe(`/user/queue/game/init`, function (messageOutput) {
+        console.log("Received init message");
+        const body = JSON.parse(messageOutput.body);
+        boardFen = body.fen;
+        boardVersion = boardVersion + 1;
+        playerColor = body.playerColor;
+        isPlayer = body.isPlayer;
+        isReady = true;
+      });
 
       // Client subscribes to the '1' room
       subscription = stompClient!.subscribe(`/topic/game/fen/${data.id}`, function (messageOutput) {
@@ -100,7 +112,17 @@
           boardFen = body.fen;
           boardVersion = boardVersion + 1;
         }
-        isReady = true;
+      });
+
+      subscription = stompClient!.subscribe(`/user/topic/game/fen/${data.id}`, function (messageOutput) {
+        const body = JSON.parse(messageOutput.body);
+        if (body.messageType == "MOVE_REJECTED") {
+          boardFen = boardFen;
+          boardVersion = boardVersion + 1;
+        } else {
+          boardFen = body.fen;
+          boardVersion = boardVersion + 1;
+        }
       });
 
       initBoard();
@@ -113,8 +135,7 @@
 
   function initBoard() {
     if (stompClient) {
-      console.log({ id: data.id });
-      stompClient.send(`/app/game/init/${data.id}`, {});
+      stompClient.send(`/app/game/init/${data.id}`);
     }
   }
 
