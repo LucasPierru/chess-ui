@@ -16,7 +16,7 @@
   let board: string[][] = $derived(translateFen(boardFen, Color.WHITE));
   let socket: WebSocket;
   let stompClient: Client | null = null;
-  let subscription: Subscription | null = null;
+  let subscriptions: Subscription[] = [];
   let currentRoom: string;
 
   const playerId = $store;
@@ -92,38 +92,44 @@
 
   function connectWebSocket() {
     stompClient!.connect({ playerId }, function (frame) {
-      subscription = stompClient!.subscribe(`/user/queue/game/init`, function (messageOutput) {
-        console.log("Received init message");
-        const body = JSON.parse(messageOutput.body);
-        boardFen = body.fen;
-        boardVersion = boardVersion + 1;
-        playerColor = body.playerColor;
-        isPlayer = body.isPlayer;
-        isReady = true;
-      });
+      subscriptions.push(
+        stompClient!.subscribe(`/user/queue/game/init`, function (messageOutput) {
+          console.log("Received init message");
+          const body = JSON.parse(messageOutput.body);
+          boardFen = body.fen;
+          boardVersion = boardVersion + 1;
+          playerColor = body.playerColor;
+          isPlayer = body.isPlayer;
+          isReady = true;
+        })
+      );
 
       // Client subscribes to the '1' room
-      subscription = stompClient!.subscribe(`/topic/game/fen/${data.id}`, function (messageOutput) {
-        const body = JSON.parse(messageOutput.body);
-        if (body.messageType == "MOVE_REJECTED") {
-          boardFen = boardFen;
-          boardVersion = boardVersion + 1;
-        } else {
-          boardFen = body.fen;
-          boardVersion = boardVersion + 1;
-        }
-      });
+      subscriptions.push(
+        stompClient!.subscribe(`/topic/game/fen/${data.id}`, function (messageOutput) {
+          const body = JSON.parse(messageOutput.body);
+          if (body.messageType == "MOVE_REJECTED") {
+            boardFen = boardFen;
+            boardVersion = boardVersion + 1;
+          } else {
+            boardFen = body.fen;
+            boardVersion = boardVersion + 1;
+          }
+        })
+      );
 
-      subscription = stompClient!.subscribe(`/user/topic/game/fen/${data.id}`, function (messageOutput) {
-        const body = JSON.parse(messageOutput.body);
-        if (body.messageType == "MOVE_REJECTED") {
-          boardFen = boardFen;
-          boardVersion = boardVersion + 1;
-        } else {
-          boardFen = body.fen;
-          boardVersion = boardVersion + 1;
-        }
-      });
+      subscriptions.push(
+        stompClient!.subscribe(`/user/topic/game/fen/${data.id}`, function (messageOutput) {
+          const body = JSON.parse(messageOutput.body);
+          if (body.messageType == "MOVE_REJECTED") {
+            boardFen = boardFen;
+            boardVersion = boardVersion + 1;
+          } else {
+            boardFen = body.fen;
+            boardVersion = boardVersion + 1;
+          }
+        })
+      );
 
       initBoard();
     });
@@ -140,9 +146,9 @@
   }
 
   function disconnect() {
-    if (subscription) {
-      subscription.unsubscribe();
-      subscription = null;
+    if (subscriptions.length > 0) {
+      subscriptions.forEach((subscription) => subscription.unsubscribe());
+      subscriptions = [];
     }
 
     if (stompClient && stompClient.connected) {
