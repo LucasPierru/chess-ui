@@ -10,4 +10,7 @@ declare global {
 	}
 }
 
-export {};
+/// <reference types="@sveltejs/kit" />
+
+
+export { };

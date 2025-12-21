@@ -1,10 +1,10 @@
 export enum Color {
-  WHITE = 'w',
-  BLACK = 'b'
+  WHITE = 'WHITE',
+  BLACK = 'BLACK'
 }
 
 // place files you want to import through the `$lib` alias in this folder.
-export const translateFen = (fen: string, color = Color.WHITE): string[][] => {
+export const translateFen = (fen: string, color: Color): string[][] => {
   const rows = fen.split(' ')[0].split('/');
   const symbolToPiece: { [key: string]: string } = {
     'r': 'br',
@@ -33,8 +33,12 @@ export const translateFen = (fen: string, color = Color.WHITE): string[][] => {
         result.push(symbolToPiece[piece])
       }
     })
-    return result;
+    return color === Color.WHITE ? result : result.reverse();
   })
 
   return color === Color.WHITE ? board.reverse() : board;
+}
+
+export function roundToNearestHundred(num: number): number {
+  return Math.round(num / 100) * 100;
 }

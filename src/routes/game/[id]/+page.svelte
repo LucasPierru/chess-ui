@@ -1,106 +1,54 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
   import type { Client, Subscription } from "stompjs";
-  import store from "$lib/stores/playerStore.js";
+  import store from "$lib/stores/playerStore";
+  import { initializeStompClient } from "$lib/stores/stompClientStore";
   import { translateFen, Color } from "$lib";
+  import { Clipboard, LoaderCircle } from "@lucide/svelte";
+  import Button from "@/components/ui/button/button.svelte";
+  import { toast } from "svelte-sonner";
+  import Board from "@/components/board/board.svelte";
 
   let { data } = $props();
   let boardFen = $state("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
   let boardVersion = $state(0);
-  let playerColor: Color | null = null;
+  let playerColor: Color = $state(Color.WHITE);
   let isPlayer = false;
   let isReady = false;
 
-  const letters = ["a", "b", "c", "d", "e", "f", "g", "h"];
-
-  let board: string[][] = $derived(translateFen(boardFen, Color.WHITE));
+  let board: string[][] = $derived(translateFen(boardFen, playerColor));
+  let sideToMove: Color = $derived(boardFen.split(" ")[1] === "w" ? Color.WHITE : Color.BLACK);
   let socket: WebSocket;
   let stompClient: Client | null = null;
   let subscriptions: Subscription[] = [];
   let currentRoom: string;
+  let numberOfPlayers = $state(0);
+  let numberOfSpectators = $state(0);
+  let currentUrl = "";
 
   const playerId = $store;
 
   onMount(async () => {
-    const Stomp = (await import("stompjs")).default;
     currentRoom = data.id;
     socket = new WebSocket("ws://localhost:8080/ws");
-    stompClient = Stomp.over(socket);
+    stompClient = await initializeStompClient(socket);
     connectWebSocket();
+    currentUrl = window.location.href;
   });
-
-  function roundToNearestHundred(num: number): number {
-    return Math.round(num / 100) * 100;
-  }
-
-  let selectedElement: HTMLDivElement | null = null;
-  let isDragging = false;
-  let offset = { x: 0, y: 0 };
-  let from = "";
-  let to = "";
-
-  function startDrag(event: MouseEvent) {
-    if (!isReady) return;
-    const target = event.target as HTMLDivElement;
-    if (target.classList.contains("piece")) {
-      selectedElement = target;
-      selectedElement.style.zIndex = "2";
-      selectedElement.style.cursor = "grabbing";
-      const boundingRect = target.getBoundingClientRect();
-      // Calculate the offset between mouse position and element position
-      offset = {
-        x: boundingRect.height / 2 + 8,
-        y: boundingRect.width / 2 + 8,
-      };
-      const xPercent = (100 * (event.clientX - offset.x)) / 96;
-      const yPercent = (100 * (event.clientY - offset.y)) / 96;
-      from = letters[roundToNearestHundred(xPercent) / 100] + (7 - roundToNearestHundred(yPercent) / 100 + 1);
-      event.preventDefault();
-      selectedElement.style.transform = `translate(${xPercent}%, ${yPercent}%)`;
-      selectedElement.addEventListener("mousemove", drag);
-      selectedElement.addEventListener("mouseup", endDrag);
-      isDragging = true;
-    }
-  }
-
-  function drag(event: MouseEvent) {
-    if (selectedElement && isDragging) {
-      event.preventDefault();
-      const xPercent = (100 * (event.clientX - offset.x)) / 96;
-      const yPercent = (100 * (event.clientY - offset.y)) / 96;
-      selectedElement.style.transform = `translate(${xPercent}%, ${yPercent}%)`;
-    }
-  }
-
-  function endDrag(event: MouseEvent) {
-    if (isDragging && selectedElement) {
-      // Restore appearance
-      isDragging = false;
-      //selectedElement.style.transform = "";
-      const xPercent = roundToNearestHundred((100 * (event.clientX - offset.x)) / 96);
-      const yPercent = roundToNearestHundred((100 * (event.clientY - offset.y)) / 96);
-      to = letters[roundToNearestHundred(xPercent) / 100] + (7 - roundToNearestHundred(yPercent) / 100 + 1);
-      sendMessage(from, to);
-      // Remove the global listeners
-      selectedElement.removeEventListener("mousemove", drag);
-      selectedElement.removeEventListener("mouseup", endDrag);
-      selectedElement.style.zIndex = "1";
-      selectedElement.style.cursor = "grab";
-      selectedElement = null;
-    }
-  }
 
   function connectWebSocket() {
     stompClient!.connect({ playerId }, function (frame) {
       subscriptions.push(
         stompClient!.subscribe(`/user/queue/game/init`, function (messageOutput) {
-          console.log("Received init message");
           const body = JSON.parse(messageOutput.body);
+          console.log({ body });
           boardFen = body.fen;
           boardVersion = boardVersion + 1;
-          playerColor = body.playerColor;
+          playerColor = body.color;
           isPlayer = body.isPlayer;
           isReady = true;
+          numberOfPlayers = body.numberOfPlayers;
+          numberOfSpectators = body.numberOfSpectators;
         })
       );
 
@@ -162,9 +110,13 @@
     disconnect();
   });
 
-  function sendMessage(from: string, to: string) {
-    // Handle incoming message for the '1' room
-    stompClient!.send(`/app/game/${data.id}`, {}, JSON.stringify({ from: from, to: to }));
+  async function copyToClipboard() {
+    try {
+      await navigator.clipboard.writeText(currentUrl);
+      toast("Link copied to clipboard!");
+    } catch (err) {
+      console.error("Failed to copy: ", err);
+    }
   }
 </script>
 
@@ -174,52 +126,35 @@
 </svelte:head>
 
 {#key boardVersion}
-  <div class="board">
-    {#each board as row, rowIndex}
-      {#each row as cell, colIndex}
-        {#if cell}
-          <div
-            class="piece"
-            style="transform: translate({colIndex * 100}%, {rowIndex *
-              100}%);background-image: url('/pieces/{cell}.png');"
-            draggable="true"
-            ondragstart={startDrag}
-            role="button"
-            tabindex={parseInt(`${rowIndex}${colIndex}`)}
-          ></div>
-        {/if}
-      {/each}
-    {/each}
+  <div class="flex flex-col items-center gap-4">
+    <div class="flex flex-row gap-4 items-center justify-center w-full">
+      <div class="flex-1"></div>
+      {#if numberOfPlayers > 1}
+        <Board color={playerColor} {board} roomId={data.id} />
+      {/if}
+      <div class={`flex-1`}>
+        <span
+          class={`block w-fit text-center p-4 font-semibold text-lg rounded-lg border border-border shadow-md ${sideToMove === "WHITE" ? "bg-white text-black" : "bg-black text-white"}`}
+        >
+          {sideToMove === "WHITE" ? "White to move" : "Black to move"}
+        </span>
+      </div>
+    </div>
+    {#if numberOfPlayers <= 1}
+      <span class="text-lg">Share this link to invite an opponent</span>
+      <div class="flex items-center gap-4 border border-primary p-2 rounded-xl">
+        <span>{currentUrl}</span>
+        <Button onclick={copyToClipboard} size="icon"><Clipboard /></Button>
+      </div>
+      <div class="flex gap-2 items-center">
+        <LoaderCircle class="animate-spin" />
+        <h2 class="text-lg">Waiting for opponent to join</h2>
+      </div>
+    {/if}
+    <span>Players: {numberOfPlayers} | Spectators: {numberOfSpectators}</span>
   </div>
 {/key}
 
-<style>
-  .static {
-    cursor: not-allowed;
-  }
-  .draggable {
-    cursor: grab;
-  }
-  .board {
-    /* Reference the image placed in static/images/background.jpg */
-    background-image: url("/board.png");
-    background-size: 100%;
-    contain: layout;
-    height: 768px;
-    width: 768px;
-    position: relative;
-  }
-
-  .piece {
-    background-size: 100%;
-    width: 12.5%;
-    height: 12.5%;
-    position: absolute;
-    top: 0;
-    left: 0;
-    overflow: hidden;
-    touch-action: none;
-    will-change: transform;
-    cursor: grab;
-  }
+<style lang="postcss">
+  @reference "tailwindcss";
 </style>
