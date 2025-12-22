@@ -83,7 +83,7 @@
 
   function sendMessage(from: string, to: string) {
     // Handle incoming message for the '1' room
-    stompClient!.send(`/app/game/${roomId}`, {}, JSON.stringify({ from: from, to: to }));
+    stompClient!.publish({ destination: `/app/game/${roomId}`, body: JSON.stringify({ from: from, to: to }) });
   }
 
   function handleContextMenu(event: MouseEvent) {

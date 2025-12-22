@@ -1,11 +1,22 @@
 import { writable } from 'svelte/store';
-import type { Client } from 'stompjs';
+import { Client } from '@stomp/stompjs';
+import { WebSocket } from 'ws';
+
+Object.assign(global, { WebSocket });
 
 export const stompClient = writable<Client | null>(null);
 
-export async function initializeStompClient(socket: WebSocket) {
-  const Stomp = (await import("stompjs")).default;
-  const client = Stomp.over(socket);
+export function initializeStompClient(playerId: string): Client {
+  const client = new Client({
+    brokerURL: 'ws://localhost:8080/ws',
+    connectHeaders: {
+      playerId
+    },
+    debug: str => console.log("[STOMP]", str),
+    reconnectDelay: 0,
+    heartbeatIncoming: 0,
+    heartbeatOutgoing: 0
+  });
   stompClient.set(client);
   return client;
 }
