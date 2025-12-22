@@ -1,29 +1,29 @@
 <script lang="ts">
-  import { onDestroy, onMount } from "svelte";
-  import { Client } from "@stomp/stompjs";
-  import type { IFrame as Frame, StompSubscription as Subscription } from "@stomp/stompjs";
-  import store from "$lib/stores/playerStore";
-  import { initializeStompClient } from "$lib/stores/stompClientStore";
-  import { translateFen, Color } from "$lib";
-  import { Clipboard, LoaderCircle } from "@lucide/svelte";
-  import Button from "@/components/ui/button/button.svelte";
-  import { toast } from "svelte-sonner";
-  import Board from "@/components/board/board.svelte";
+  import { onDestroy, onMount } from 'svelte';
+  import { Client } from '@stomp/stompjs';
+  import type { IFrame as Frame, StompSubscription as Subscription } from '@stomp/stompjs';
+  import store from '$lib/stores/playerStore';
+  import { initializeStompClient } from '$lib/stores/stompClientStore';
+  import { translateFen, Color } from '$lib';
+  import { Clipboard, LoaderCircle } from '@lucide/svelte';
+  import Button from '@/components/ui/button/button.svelte';
+  import { toast } from 'svelte-sonner';
+  import Board from '@/components/board/board.svelte';
 
   let { data } = $props();
-  let boardFen = $state("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+  let boardFen = $state('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
   let boardVersion = $state(0);
   let playerColor: Color = $state(Color.WHITE);
   let isPlayer = false;
 
   let board: string[][] = $derived(translateFen(boardFen, playerColor));
-  let sideToMove: Color = $derived(boardFen.split(" ")[1] === "w" ? Color.WHITE : Color.BLACK);
+  let sideToMove: Color = $derived(boardFen.split(' ')[1] === 'w' ? Color.WHITE : Color.BLACK);
   let stompClient: Client | null = null;
   let subscriptions: Subscription[] = [];
   let currentRoom: string;
   let numberOfPlayers = $state(0);
   let numberOfSpectators = $state(0);
-  let currentUrl = $state("");
+  let currentUrl = $state('');
   let hasCopied = $state(false);
   let playerId: string;
 
@@ -31,7 +31,7 @@
     playerId = $store;
 
     if (!playerId) {
-      console.error("playerId missing — aborting WS connect");
+      console.error('playerId missing — aborting WS connect');
       return;
     }
 
@@ -63,7 +63,7 @@
         isPlayer = body.isPlayer;
         numberOfPlayers = body.numberOfPlayers;
         numberOfSpectators = body.numberOfSpectators;
-      })
+      }),
     );
 
     subscriptions.push(
@@ -74,34 +74,34 @@
         boardVersion = boardVersion + 1;
         numberOfPlayers = body.numberOfPlayers;
         numberOfSpectators = body.numberOfSpectators;
-      })
+      }),
     );
 
     // Client subscribes to the '1' room
     subscriptions.push(
       stompClient!.subscribe(`/topic/game/fen/${data.id}`, function (messageOutput) {
         const body = JSON.parse(messageOutput.body);
-        if (body.messageType == "MOVE_REJECTED") {
+        if (body.messageType == 'MOVE_REJECTED') {
           boardFen = boardFen;
           boardVersion = boardVersion + 1;
         } else {
           boardFen = body.fen;
           boardVersion = boardVersion + 1;
         }
-      })
+      }),
     );
 
     subscriptions.push(
       stompClient!.subscribe(`/user/topic/game/fen/${data.id}`, function (messageOutput) {
         const body = JSON.parse(messageOutput.body);
-        if (body.messageType == "MOVE_REJECTED") {
+        if (body.messageType == 'MOVE_REJECTED') {
           boardFen = boardFen;
           boardVersion = boardVersion + 1;
         } else {
           boardFen = body.fen;
           boardVersion = boardVersion + 1;
         }
-      })
+      }),
     );
 
     initBoard();
@@ -109,7 +109,7 @@
 
   function initBoard() {
     if (stompClient) {
-      stompClient.publish({ destination: `/app/game/init/${data.id}` });
+      stompClient.publish({ destination: `/app/game/join/${data.id}` });
     }
   }
 
@@ -121,7 +121,7 @@
 
     if (stompClient && stompClient.connected) {
       stompClient.onDisconnect = (frame: Frame) => {
-        console.log("Disconnected");
+        console.log('Disconnected');
       };
     }
   }
@@ -134,9 +134,9 @@
     try {
       await navigator.clipboard.writeText(currentUrl);
       hasCopied = true;
-      toast("Link copied to clipboard!");
+      toast('Link copied to clipboard!');
     } catch (err) {
-      console.error("Failed to copy: ", err);
+      console.error('Failed to copy: ', err);
     }
   }
 </script>
@@ -154,9 +154,9 @@
         <Board color={playerColor} {board} roomId={data.id} />
         <div class="flex-1">
           <span
-            class={`block w-fit text-center p-4 font-semibold text-lg rounded-lg border border-border shadow-md ${sideToMove === "WHITE" ? "bg-white text-black" : "bg-black text-white"}`}
+            class={`block w-fit text-center p-4 font-semibold text-lg rounded-lg border border-border shadow-md ${sideToMove === 'WHITE' ? 'bg-white text-black' : 'bg-black text-white'}`}
           >
-            {sideToMove === "WHITE" ? "White to move" : "Black to move"}
+            {sideToMove === 'WHITE' ? 'White to move' : 'Black to move'}
           </span>
         </div>
       {/if}
@@ -165,7 +165,7 @@
       <span class="text-lg">Share this link to invite an opponent</span>
       <div class="flex items-center gap-4 border border-primary p-2 rounded-xl">
         <span>{currentUrl}</span>
-        <Button onclick={copyToClipboard} size="icon" variant={hasCopied ? "secondary" : "default"}
+        <Button onclick={copyToClipboard} size="icon" variant={hasCopied ? 'secondary' : 'default'}
           ><Clipboard /></Button
         >
       </div>

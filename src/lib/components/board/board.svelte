@@ -1,34 +1,27 @@
 <script lang="ts">
-  import { Color, roundToNearestHundred } from "@/index";
-  import { stompClient as stompClientStore } from "$lib/stores/stompClientStore";
+  import { Color, roundToNearestHundred } from '@/index';
+  import { stompClient as stompClientStore } from '$lib/stores/stompClientStore';
+  import { letters, getCoordinate } from '@/index';
+  import { Mouse } from '@lucide/svelte';
 
   let { color, board, roomId }: { color: Color; board: string[][]; roomId: string } = $props();
 
   let selectedElement: HTMLDivElement | null = null;
   let isDragging = false;
   let offset = { x: 0, y: 0, width: 0, height: 0 };
-  let from = "";
-  let to = "";
-  let letters = ["a", "b", "c", "d", "e", "f", "g", "h"];
+  let from = '';
+  let to = '';
   let coordinateSize = 14;
   const stompClient = $stompClientStore;
   let rightClickedSquares = $state({} as Record<string, boolean>);
 
-  function getCoordinate(xPercent: number, yPercent: number): { col: number; row: number } {
-    const row =
-      color === Color.WHITE ? 8 - roundToNearestHundred(yPercent) / 100 : roundToNearestHundred(yPercent) / 100 + 1;
-    const col =
-      color === Color.WHITE ? roundToNearestHundred(xPercent) / 100 : 7 - roundToNearestHundred(xPercent) / 100;
-    return { col, row };
-  }
-
   function startDrag(event: MouseEvent) {
     const target = event.target as HTMLDivElement;
-    const board = document.querySelector(".board") as HTMLDivElement;
-    if (target.classList.contains("piece")) {
+    const board = document.querySelector('#board') as HTMLDivElement;
+    if (target.id.startsWith('piece') && event.button === 0) {
       selectedElement = target;
-      selectedElement.style.zIndex = "2";
-      selectedElement.style.cursor = "grabbing";
+      selectedElement.style.zIndex = '2';
+      selectedElement.style.cursor = 'grabbing';
       const boundingRect = target.getBoundingClientRect();
       const boardRect = board.getBoundingClientRect();
       // Calculate the offset between mouse position and element position
@@ -41,14 +34,14 @@
       const xPercent = (100 * (event.clientX - offset.x)) / boundingRect.width;
       const yPercent = (100 * (event.clientY - offset.y)) / boundingRect.height;
 
-      const { col, row } = getCoordinate(xPercent, yPercent);
+      const { col, row } = getCoordinate(color, xPercent, yPercent);
 
       from = letters[col] + row;
 
       event.preventDefault();
       selectedElement.style.transform = `translate(${xPercent}%, ${yPercent}%)`;
-      selectedElement.addEventListener("mousemove", drag);
-      selectedElement.addEventListener("mouseup", endDrag);
+      selectedElement.addEventListener('mousemove', drag);
+      selectedElement.addEventListener('mouseup', endDrag);
       isDragging = true;
     }
   }
@@ -69,27 +62,30 @@
       //selectedElement.style.transform = "";
       const xPercent = roundToNearestHundred((100 * (event.clientX - offset.x)) / offset.width);
       const yPercent = roundToNearestHundred((100 * (event.clientY - offset.y)) / offset.height);
-      const { col, row } = getCoordinate(xPercent, yPercent);
+      const { col, row } = getCoordinate(color, xPercent, yPercent);
       to = letters[col] + row;
       sendMessage(from, to);
       // Remove the global listeners
-      selectedElement.removeEventListener("mousemove", drag);
-      selectedElement.removeEventListener("mouseup", endDrag);
-      selectedElement.style.zIndex = "1";
-      selectedElement.style.cursor = "grab";
+      selectedElement.removeEventListener('mousemove', drag);
+      selectedElement.removeEventListener('mouseup', endDrag);
+      selectedElement.style.zIndex = '1';
+      selectedElement.style.cursor = 'grab';
       selectedElement = null;
     }
   }
 
   function sendMessage(from: string, to: string) {
     // Handle incoming message for the '1' room
-    stompClient!.publish({ destination: `/app/game/${roomId}`, body: JSON.stringify({ from: from, to: to }) });
+    stompClient!.publish({
+      destination: `/app/game/${roomId}`,
+      body: JSON.stringify({ from: from, to: to }),
+    });
   }
 
   function handleContextMenu(event: MouseEvent) {
     event.preventDefault();
     const target = event.target as HTMLDivElement;
-    const board = document.querySelector(".board") as HTMLDivElement;
+    const board = document.querySelector('#board') as HTMLDivElement;
 
     const boundingRect = target.getBoundingClientRect();
     const boardRect = board.getBoundingClientRect();
@@ -102,7 +98,7 @@
     };
     const xPercent = (100 * (event.clientX - offset.x)) / boundingRect.width;
     const yPercent = (100 * (event.clientY - offset.y)) / boundingRect.height;
-    const { col, row } = getColRow(color, getCoordinate(xPercent, yPercent));
+    const { col, row } = getColRow(color, getCoordinate(color, xPercent, yPercent));
     const squareKey = `${col},${row}`;
     if (rightClickedSquares[squareKey]) {
       rightClickedSquares[squareKey] = false;
@@ -111,12 +107,28 @@
     }
   }
 
-  function getColRow(color: Color, { col, row }: { col: number; row: number }): { col: number; row: number } {
-    return color === Color.WHITE ? { col, row: 8 - row } : { col: 7 - col, row };
+  function resetHighlights(event: MouseEvent) {
+    if (event.button === 0) {
+      rightClickedSquares = {};
+    }
+  }
+
+  function getColRow(
+    color: Color,
+    { col, row }: { col: number; row: number },
+  ): { col: number; row: number } {
+    return color === Color.WHITE ? { col, row: 8 - row } : { col: 7 - col, row: row - 1 };
   }
 </script>
 
-<div class="board" oncontextmenu={handleContextMenu} role="button" tabindex="0">
+<div
+  id="board"
+  class="w-3xl h-3xl relative"
+  oncontextmenu={handleContextMenu}
+  onmousedown={resetHighlights}
+  role="button"
+  tabindex="0"
+>
   <svg viewBox="0 0 768 768" class="">
     {#each board as row, rowIndex}
       {#each row as _, colIndex}
@@ -125,7 +137,7 @@
           y={rowIndex * 96}
           width="96"
           height="96"
-          fill={(rowIndex + colIndex) % 2 === 0 ? "var(--white-square)" : "var(--black-square)"}
+          fill={(rowIndex + colIndex) % 2 === 0 ? 'var(--white-square)' : 'var(--black-square)'}
         />
       {/each}
     {/each}
@@ -141,9 +153,9 @@
             dominant-baseline="central"
             font-size={coordinateSize}
             font-weight="bold"
-            fill={rowIndex % 2 === 0 ? "var(--black-square)" : "var(--white-square)"}
+            fill={rowIndex % 2 === 0 ? 'var(--black-square)' : 'var(--white-square)'}
           >
-            {color === "WHITE" ? 8 - rowIndex : rowIndex + 1}
+            {color === 'WHITE' ? 8 - rowIndex : rowIndex + 1}
           </text>
         {/if}
         {#if rowIndex === 7}
@@ -154,29 +166,14 @@
             dominant-baseline="central"
             font-size={coordinateSize}
             font-weight="bold"
-            fill={colIndex % 2 === 0 ? "var(--white-square)" : "var(--black-square)"}
+            fill={colIndex % 2 === 0 ? 'var(--white-square)' : 'var(--black-square)'}
           >
-            {color === "WHITE" ? letters[colIndex] : letters[7 - colIndex]}
+            {color === 'WHITE' ? letters[colIndex] : letters[7 - colIndex]}
           </text>
         {/if}
       {/each}
     {/each}
   </svg>
-  {#each board as row, rowIndex}
-    {#each row as cell, colIndex}
-      {#if cell}
-        <div
-          class="piece"
-          style="transform: translate({colIndex * 100}%, {rowIndex *
-            100}%);background-image: url('/pieces/{cell}.png');"
-          draggable="true"
-          onmousedown={startDrag}
-          role="button"
-          tabindex={parseInt(`${rowIndex}${colIndex}`)}
-        ></div>
-      {/if}
-    {/each}
-  {/each}
   <svg viewBox="0 0 768 768" class="absolute top-0 left-0 pointer-events-none">
     {#each board as row, rowIndex}
       {#each row as _, colIndex}
@@ -187,41 +184,40 @@
           dominant-baseline="central"
           font-size={coordinateSize}
           font-weight="bold"
-          fill={"#000"}
+          fill={'#000'}
         >
         </text>
         {#if rightClickedSquares[`${colIndex},${rowIndex}`]}
-          <rect x={colIndex * 96} y={rowIndex * 96} width="96" height="96" fill={"var(--accent)"} opacity="0.5" />
+          <rect
+            x={colIndex * 96}
+            y={rowIndex * 96}
+            width="96"
+            height="96"
+            fill={'var(--accent)'}
+            opacity="0.5"
+          />
         {/if}
       {/each}
     {/each}
   </svg>
+  {#each board as row, rowIndex}
+    {#each row as cell, colIndex}
+      {#if cell}
+        <div
+          id="piece-{rowIndex}{colIndex}"
+          class="w-1/8 aspect-square absolute bg-contain bg-no-repeat overflow-hidden top-0 left-0 cursor-grab touch-none will-change-transform"
+          style="transform: translate({colIndex * 100}%, {rowIndex *
+            100}%);background-image: url('/pieces/{cell}.png');"
+          draggable="true"
+          onmousedown={startDrag}
+          role="button"
+          tabindex={parseInt(`${rowIndex}${colIndex}`)}
+        ></div>
+      {/if}
+    {/each}
+  {/each}
 </div>
 
 <style lang="postcss">
   @reference "tailwindcss";
-  .board {
-    /* Reference the image placed in static/board.png */
-    background-image: url("/board.png");
-    background-size: 100%;
-    contain: layout;
-    height: 768px;
-    width: 768px;
-    position: relative;
-    background-repeat: no-repeat;
-  }
-
-  .piece {
-    background-size: 100%;
-    width: 12.5%;
-    aspect-ratio: 1 / 1;
-    position: absolute;
-    top: 0;
-    left: 0;
-    overflow: hidden;
-    touch-action: none;
-    will-change: transform;
-    cursor: grab;
-    background-repeat: no-repeat;
-  }
 </style>

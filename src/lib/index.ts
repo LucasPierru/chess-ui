@@ -3,6 +3,21 @@ export enum Color {
   BLACK = 'BLACK'
 }
 
+export const letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+
+export function getCoordinate(color: Color, xPercent: number, yPercent: number): { col: number; row: number } {
+  const row =
+    color === Color.WHITE
+      ? 8 - roundToNearestHundred(yPercent) / 100
+      : roundToNearestHundred(yPercent) / 100 + 1;
+  const col =
+    color === Color.WHITE
+      ? roundToNearestHundred(xPercent) / 100
+      : 7 - roundToNearestHundred(xPercent) / 100;
+  return { col, row };
+}
+
+
 // place files you want to import through the `$lib` alias in this folder.
 export const translateFen = (fen: string, color: Color): string[][] => {
   const rows = fen.split(' ')[0].split('/');
