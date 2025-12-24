@@ -78,7 +78,7 @@ src/
 - **TypeScript** - Type-safe JavaScript
 - **Vite** - Fast build tool and dev server
 - **STOMP** - WebSocket messaging protocol for real-time communication
-- **CSS** - Custom styling with theme support
+- **Tailwind** - Tailwind utility classes styling with theme support
 
 ## Contributing
 
