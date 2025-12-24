@@ -1,31 +1,48 @@
-# sv
+# Chess UI
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+A modern chess game user interface built with SvelteKit and TypeScript. This project provides an interactive chess board and game interface for playing chess online.
 
-## Creating a project
+## Features
 
-If you're seeing this, you've probably already done this step. Congrats!
+- Interactive chess board with drag-and-drop piece movement
+- Real-time multiplayer support via WebSocket (STOMP)
+- Clean, modern UI with theme toggle support
+- Responsive design that works on desktop and mobile
+- Game state management and player stores
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js (v18 or higher)
+- npm, pnpm, or yarn
+
+### Installation
+
+1. Clone the repository
+2. Install dependencies:
 
 ```sh
-# create a new project in the current directory
-npx sv create
-
-# create a new project in my-app
-npx sv create my-app
+npm install
+# or
+pnpm install
+# or
+yarn install
 ```
 
-## Developing
+### Development
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+Start the development server:
 
 ```sh
 npm run dev
-
 # or start the server and open the app in a new browser tab
 npm run dev -- --open
 ```
 
-## Building
+The application will be available at `http://localhost:5173`
+
+### Building for Production
 
 To create a production version of your app:
 
@@ -34,5 +51,44 @@ npm run build
 ```
 
 You can preview the production build with `npm run preview`.
+
+## Project Structure
+
+```
+src/
+├── lib/
+│   ├── components/
+│   │   ├── board/           # Chess board component
+│   │   └── ui/              # Reusable UI components
+│   ├── stores/              # Svelte stores for state management
+│   │   ├── playerStore.ts   # Player data management
+│   │   └── stompClientStore.ts  # WebSocket connection
+│   └── utils.ts             # Utility functions
+├── routes/
+│   ├── +layout.svelte       # App layout
+│   ├── +page.svelte         # Home page
+│   └── game/[id]/           # Individual game pages
+└── static/
+    └── pieces/              # Chess piece assets
+```
+
+## Technologies Used
+
+- **SvelteKit** - Full-stack web framework
+- **TypeScript** - Type-safe JavaScript
+- **Vite** - Fast build tool and dev server
+- **STOMP** - WebSocket messaging protocol for real-time communication
+- **CSS** - Custom styling with theme support
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+## License
+
+This project is open source and available under the MIT License.
 
 > To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
