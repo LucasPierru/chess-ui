@@ -11,6 +11,7 @@
   import store from '@/stores/playerStore';
   import { initializeStompClient } from '@/stores/stompClientStore';
   import type { Client, Frame } from '@stomp/stompjs';
+  import Board from '@/components/board/board.svelte';
 
   let minutes = $state(5);
   let increment = $state(3);
@@ -82,11 +83,14 @@
   }
 </script>
 
-<div class="flex items-center justify-center gap-4">
+<div class="flex flex-col md:flex-row items-center justify-center gap-4 max-w-5xl mx-auto">
   <div></div>
+  <!-- <Board color={Color.WHITE} {board} roomId={'null'} /> -->
   <div class="flex flex-col items-center gap-4">
-    <div class="relative border-2 border-primary rounded-md">
-      <svg width="768" height="768" viewBox="0 0 768 768" class="rounded-sm">
+    <div
+      class="w-[min(100vw-2rem,100vh-8rem,768px)] aspect-square grow relative border-2 border-primary rounded-md"
+    >
+      <svg viewBox="0 0 768 768" class="">
         {#each board as row, rowIndex}
           {#each row as _, colIndex}
             <rect
@@ -103,7 +107,7 @@
         {#each row as cell, colIndex}
           {#if cell}
             <div
-              class="absolute top-0 left-0 w-24 h-24 bg-contain bg-no-repeat"
+              class="w-1/8 aspect-square absolute bg-contain bg-no-repeat overflow-hidden top-0 left-0 cursor-grab touch-none will-change-transform"
               style="transform: translate({colIndex * 100}%, {rowIndex *
                 100}%); background-image: url('/pieces/{cell}.png');"
               draggable="true"
