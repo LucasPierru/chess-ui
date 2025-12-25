@@ -2,7 +2,6 @@
   import { Color, roundToNearestHundred } from '@/index';
   import { stompClient as stompClientStore } from '$lib/stores/stompClientStore';
   import { letters, getCoordinate } from '@/index';
-  import { Mouse } from '@lucide/svelte';
 
   let { color, board, roomId }: { color: Color; board: string[][]; roomId: string } = $props();
 
@@ -123,7 +122,7 @@
 
 <div
   id="board"
-  class="w-3xl h-3xl relative"
+  class="w-[min(100vw-2rem,100vh-8rem,768px)] aspect-square relative"
   oncontextmenu={handleContextMenu}
   onmousedown={resetHighlights}
   role="button"

@@ -4,11 +4,20 @@
   import type { IFrame as Frame, StompSubscription as Subscription } from '@stomp/stompjs';
   import store from '$lib/stores/playerStore';
   import { initializeStompClient } from '$lib/stores/stompClientStore';
-  import { translateFen, Color } from '$lib';
+  import {
+    translateFen,
+    Color,
+    type WinnerGameResult,
+    type DrawGameResult,
+    type GameEnded,
+    isGameEndedWithWinner,
+    isGameEndedWithDraw,
+  } from '$lib';
   import { Clipboard, LoaderCircle } from '@lucide/svelte';
   import Button from '@/components/ui/button/button.svelte';
   import { toast } from 'svelte-sonner';
   import Board from '@/components/board/board.svelte';
+  import GameOverDialog from '@/components/game-over-dialog/game-over-dialog.svelte';
 
   let { data } = $props();
   let boardFen = $state('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
@@ -26,6 +35,26 @@
   let currentUrl = $state('');
   let hasCopied = $state(false);
   let playerId: string;
+  let result: WinnerGameResult | DrawGameResult | null = $state(null);
+  let winnerColor: Color | null = $state(null);
+
+  const getGameEnded = (): GameEnded | null => {
+    if (winnerColor !== null && isGameEndedWithWinner(result)) {
+      return {
+        result: result,
+        winnerColor: winnerColor,
+      };
+    } else if (isGameEndedWithDraw(result)) {
+      return {
+        result: result as DrawGameResult,
+        winnerColor: null,
+      };
+    } else {
+      return null;
+    }
+  };
+
+  const gameEnded: GameEnded | null = $derived(getGameEnded());
 
   onMount(() => {
     playerId = $store;
@@ -58,7 +87,6 @@
     subscriptions.push(
       stompClient!.subscribe(`/user/queue/player/join`, function (messageOutput) {
         const body = JSON.parse(messageOutput.body);
-        console.log({ body });
         playerColor = body.color;
         isPlayer = body.isPlayer;
         numberOfPlayers = body.numberOfPlayers;
@@ -69,7 +97,6 @@
     subscriptions.push(
       stompClient!.subscribe(`/queue/game/init/${data.id}`, function (messageOutput) {
         const body = JSON.parse(messageOutput.body);
-        console.log({ body });
         boardFen = body.fen;
         boardVersion = boardVersion + 1;
         numberOfPlayers = body.numberOfPlayers;
@@ -77,16 +104,20 @@
       }),
     );
 
-    // Client subscribes to the '1' room
+    // Client subscribes to the game room
     subscriptions.push(
       stompClient!.subscribe(`/topic/game/fen/${data.id}`, function (messageOutput) {
         const body = JSON.parse(messageOutput.body);
         if (body.messageType == 'MOVE_REJECTED') {
           boardFen = boardFen;
           boardVersion = boardVersion + 1;
+          result = body.result;
+          winnerColor = body.winnerColor;
         } else {
           boardFen = body.fen;
           boardVersion = boardVersion + 1;
+          result = body.result;
+          winnerColor = body.winnerColor;
         }
       }),
     );
@@ -97,9 +128,13 @@
         if (body.messageType == 'MOVE_REJECTED') {
           boardFen = boardFen;
           boardVersion = boardVersion + 1;
+          result = body.result;
+          winnerColor = body.winnerColor;
         } else {
           boardFen = body.fen;
           boardVersion = boardVersion + 1;
+          result = body.result;
+          winnerColor = body.winnerColor;
         }
       }),
     );
@@ -148,7 +183,7 @@
 
 {#key boardVersion}
   <div class="flex flex-col items-center gap-4">
-    <div class="flex flex-row gap-4 items-center justify-center w-full">
+    <div class="flex flex-col lg:flex-row gap-4 items-center justify-center w-full">
       <div class="flex-1"></div>
       {#if numberOfPlayers > 1}
         <Board color={playerColor} {board} roomId={data.id} />
@@ -176,6 +211,9 @@
     {/if}
     <span>Players: {numberOfPlayers} | Spectators: {numberOfSpectators}</span>
   </div>
+  {#if gameEnded !== null}
+    <GameOverDialog isGameOver={gameEnded !== null} {gameEnded} />
+  {/if}
 {/key}
 
 <style lang="postcss">

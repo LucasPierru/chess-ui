@@ -3,6 +3,62 @@ export enum Color {
   BLACK = 'BLACK'
 }
 
+export enum GameResult {
+  RESIGNATION = 'RESIGNATION',
+  CHECKMATE = 'CHECKMATE',
+  TIMEOUT = 'TIMEOUT',
+  STALEMATE = 'STALEMATE',
+  DRAW_AGREEMENT = 'DRAW_AGREEMENT',
+  DRAW_INSUFFICIENT_MATERIAL = 'DRAW_INSUFFICIENT_MATERIAL',
+  DRAW_FIFTY_MOVE_RULE = 'DRAW_FIFTY_MOVE_RULE',
+  DRAW_THREEFOLD_REPETITION = 'DRAW_THREEFOLD_REPETITION'
+}
+
+// Results that indicate a winner
+export type WinnerGameResult =
+  | GameResult.RESIGNATION
+  | GameResult.CHECKMATE
+  | GameResult.TIMEOUT;
+
+// Results that indicate a draw (no winner)
+export type DrawGameResult =
+  | GameResult.STALEMATE
+  | GameResult.DRAW_AGREEMENT
+  | GameResult.DRAW_INSUFFICIENT_MATERIAL
+  | GameResult.DRAW_FIFTY_MOVE_RULE
+  | GameResult.DRAW_THREEFOLD_REPETITION;
+
+// Discriminated union types for type-safe game results
+export type GameEndedWithWinner = {
+  result: WinnerGameResult;
+  winnerColor: Color;
+};
+
+export type GameEndedWithDraw = {
+  result: DrawGameResult;
+  winnerColor: null;
+};
+
+export const isGameEndedWithWinner = (result: WinnerGameResult | DrawGameResult | null): result is WinnerGameResult => {
+  return (
+    result === GameResult.RESIGNATION ||
+    result === GameResult.CHECKMATE ||
+    result === GameResult.TIMEOUT
+  );
+}
+
+export const isGameEndedWithDraw = (result: WinnerGameResult | DrawGameResult | null): result is DrawGameResult => {
+  return (
+    result === GameResult.STALEMATE ||
+    result === GameResult.DRAW_AGREEMENT ||
+    result === GameResult.DRAW_INSUFFICIENT_MATERIAL ||
+    result === GameResult.DRAW_FIFTY_MOVE_RULE ||
+    result === GameResult.DRAW_THREEFOLD_REPETITION
+  );
+}
+
+export type GameEnded = GameEndedWithWinner | GameEndedWithDraw;
+
 export const letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 
 export function getCoordinate(color: Color, xPercent: number, yPercent: number): { col: number; row: number } {
