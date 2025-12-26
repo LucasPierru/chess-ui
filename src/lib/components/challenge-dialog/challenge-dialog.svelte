@@ -6,19 +6,15 @@
   import { ChessKingIcon, CircleQuestionMark } from '@lucide/svelte';
   import { Color } from '$lib';
   import { goto } from '$app/navigation';
-  import { stompClient as stompClientStore } from '$lib/stores/stompClientStore';
+  import { publish } from '@/stomp';
 
   let minutes = $state(5);
   let increment = $state(3);
   let color: Color | null = $state(null);
-  const stompClient = $stompClientStore;
 
   function createChallenge() {
     const roomId = crypto.randomUUID();
-    stompClient!.publish({
-      destination: `/app/game/create/${roomId}`,
-      body: JSON.stringify({ minutes, increment, color }),
-    });
+    publish(`/app/game/create/${roomId}`, { minutes, increment, color });
     goto(`/game/${roomId}`);
   }
 </script>

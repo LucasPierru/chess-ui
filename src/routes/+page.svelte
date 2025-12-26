@@ -1,26 +1,17 @@
 <script lang="ts">
   import { Button } from '@/components/ui/button';
   import { Repeat2 } from '@lucide/svelte';
-  import { onMount } from 'svelte';
-  import store from '@/stores/playerStore';
-  import { initializeStompClient } from '@/stores/stompClientStore';
-  import type { Client, Frame } from '@stomp/stompjs';
+  import { onDestroy, onMount } from 'svelte';
+  import { connect, disconnect } from '@/stomp';
   import ChallengeDialog from '@/components/challenge-dialog/challenge-dialog.svelte';
+  import { getFEN, getLegalMoves } from '@/wasm/chess-engine';
+  import { Color, translateFen } from '@/index';
+  import Board from '@/components/board/board.svelte';
 
-  let playerId: string;
-  let stompClient: Client | null = null;
-  let board: string[][] = $state(
-    [
-      ['wr', 'wn', 'wb', 'wq', 'wk', 'wb', 'wn', 'wr'],
-      ['wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp'],
-      ['', '', '', '', '', '', '', ''],
-      ['', '', '', '', '', '', '', ''],
-      ['', '', '', '', '', '', '', ''],
-      ['', '', '', '', '', '', '', ''],
-      ['bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp'],
-      ['br', 'bn', 'bb', 'bq', 'bk', 'bb', 'bn', 'br'],
-    ].reverse(),
-  );
+  let boardFen = $state('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+  let boardVersion = $state(0);
+  let playerColor: Color = $state(Color.WHITE);
+  let board: string[][] = $derived(translateFen(boardFen, playerColor));
 
   const flipBoard = () => {
     board = board
@@ -36,33 +27,21 @@
     }
   };
 
+  const handleBoardChange = (newFen: string) => {
+    boardFen = newFen;
+    boardVersion += 1;
+  };
+
   onMount(() => {
-    playerId = $store;
-
-    if (!playerId) {
-      console.error('playerId missing — aborting WS connect');
-      return;
-    }
-
-    connectWebSocket();
+    boardFen = getFEN();
+    /* console.log(getFEN());
+    console.log(getLegalMoves('e2')); */
+    connect();
   });
 
-  function connectWebSocket() {
-    stompClient = initializeStompClient(playerId);
-    stompClient.onConnect = (frame: Frame) => {
-      onConnected(frame);
-    };
-
-    stompClient.activate();
-
-    stompClient.debug = (str) => {
-      console.log(`[STOMP]`, str);
-    };
-  }
-
-  function onConnected(frame: Frame) {
-    console.log('Connected: ' + frame);
-  }
+  onDestroy(() => {
+    disconnect();
+  });
 </script>
 
 <svelte:head>
@@ -70,11 +49,12 @@
   <meta name="description" content="Play the classic game of chess against a computer opponent." />
 </svelte:head>
 
-<div class="flex flex-col md:flex-row items-center justify-center gap-4 max-w-5xl mx-auto">
-  <div></div>
-  <!-- <Board color={Color.WHITE} {board} roomId={'null'} /> -->
-  <div class="flex flex-col items-center gap-4">
-    <div
+{#key boardVersion}
+  <div class="flex flex-col md:flex-row items-center justify-center gap-4 max-w-5xl mx-auto">
+    <div></div>
+    <div class="flex flex-col items-center gap-4">
+      <Board color={Color.WHITE} {board} onBoardChange={handleBoardChange} />
+      <!-- <div
       class="w-[min(100vw-2rem,100vh-8rem,768px)] aspect-square grow relative border-2 border-primary rounded-md"
     >
       <svg viewBox="0 0 768 768" class="">
@@ -102,15 +82,16 @@
           {/if}
         {/each}
       {/each}
+    </div> -->
+      <ChallengeDialog />
     </div>
-    <ChallengeDialog />
+    <Button
+      onclick={flipBoard}
+      size="icon-lg"
+      variant="outline"
+      class="mb-12 dark:hover:text-primary"
+    >
+      <Repeat2 class="w-8 h-8 transition-all" id="flip-board-icon" />
+    </Button>
   </div>
-  <Button
-    onclick={flipBoard}
-    size="icon-lg"
-    variant="outline"
-    class="mb-12 dark:hover:text-primary"
-  >
-    <Repeat2 class="w-8 h-8 transition-all" id="flip-board-icon" />
-  </Button>
-</div>
+{/key}

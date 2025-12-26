@@ -1,85 +1,33 @@
 <script lang="ts">
-  import { Color, roundToNearestHundred } from '@/index';
-  import { stompClient as stompClientStore } from '$lib/stores/stompClientStore';
-  import { letters, getCoordinate } from '@/index';
+  import { Color } from '@/index';
+  import { LETTERS, getCoordinate } from '@/index';
+  import Draggable from './draggable';
+  import { onMount } from 'svelte';
 
-  let { color, board, roomId }: { color: Color; board: string[][]; roomId: string } = $props();
+  let {
+    color,
+    board,
+    roomId,
+    onBoardChange,
+  }: {
+    color: Color;
+    board: string[][];
+    roomId?: string;
+    onBoardChange?: (newFen: string) => void;
+  } = $props();
 
-  let selectedElement: HTMLDivElement | null = null;
-  let isDragging = false;
-  let offset = { x: 0, y: 0, width: 0, height: 0 };
-  let from = '';
-  let to = '';
   let coordinateSize = 14;
-  const stompClient = $stompClientStore;
   let rightClickedSquares = $state({} as Record<string, boolean>);
 
-  function startDrag(event: MouseEvent) {
-    const target = event.target as HTMLDivElement;
-    const board = document.querySelector('#board') as HTMLDivElement;
-    if (target.id.startsWith('piece') && event.button === 0) {
-      selectedElement = target;
-      selectedElement.style.zIndex = '2';
-      selectedElement.style.cursor = 'grabbing';
-      const boundingRect = target.getBoundingClientRect();
-      const boardRect = board.getBoundingClientRect();
-      // Calculate the offset between mouse position and element position
-      offset = {
-        width: boundingRect.width,
-        height: boundingRect.height,
-        x: boundingRect.height / 2 + boardRect.left,
-        y: boundingRect.width / 2 + boardRect.top,
-      };
-      const xPercent = (100 * (event.clientX - offset.x)) / boundingRect.width;
-      const yPercent = (100 * (event.clientY - offset.y)) / boundingRect.height;
+  const getColor = () => {
+    return color;
+  };
 
-      const { col, row } = getCoordinate(color, xPercent, yPercent);
+  const getRoomId = () => {
+    return roomId;
+  };
 
-      from = letters[col] + row;
-
-      event.preventDefault();
-      selectedElement.style.transform = `translate(${xPercent}%, ${yPercent}%)`;
-      selectedElement.addEventListener('mousemove', drag);
-      selectedElement.addEventListener('mouseup', endDrag);
-      isDragging = true;
-    }
-  }
-
-  function drag(event: MouseEvent) {
-    if (selectedElement && isDragging) {
-      event.preventDefault();
-      const xPercent = (100 * (event.clientX - offset.x)) / offset.width;
-      const yPercent = (100 * (event.clientY - offset.y)) / offset.height;
-      selectedElement.style.transform = `translate(${xPercent}%, ${yPercent}%)`;
-    }
-  }
-
-  function endDrag(event: MouseEvent) {
-    if (isDragging && selectedElement) {
-      // Restore appearance
-      isDragging = false;
-      //selectedElement.style.transform = "";
-      const xPercent = roundToNearestHundred((100 * (event.clientX - offset.x)) / offset.width);
-      const yPercent = roundToNearestHundred((100 * (event.clientY - offset.y)) / offset.height);
-      const { col, row } = getCoordinate(color, xPercent, yPercent);
-      to = letters[col] + row;
-      sendMessage(from, to);
-      // Remove the global listeners
-      selectedElement.removeEventListener('mousemove', drag);
-      selectedElement.removeEventListener('mouseup', endDrag);
-      selectedElement.style.zIndex = '1';
-      selectedElement.style.cursor = 'grab';
-      selectedElement = null;
-    }
-  }
-
-  function sendMessage(from: string, to: string) {
-    // Handle incoming message for the '1' room
-    stompClient!.publish({
-      destination: `/app/game/${roomId}`,
-      body: JSON.stringify({ from: from, to: to }),
-    });
-  }
+  let draggable = $derived(new Draggable(getColor(), getRoomId(), onBoardChange));
 
   function handleContextMenu(event: MouseEvent) {
     event.preventDefault();
@@ -89,7 +37,7 @@
     const boundingRect = target.getBoundingClientRect();
     const boardRect = board.getBoundingClientRect();
     // Calculate the offset between mouse position and element position
-    offset = {
+    const offset = {
       width: boundingRect.width,
       height: boundingRect.height,
       x: boundingRect.height / 2 + boardRect.left,
@@ -167,7 +115,7 @@
             font-weight="bold"
             fill={colIndex % 2 === 0 ? 'var(--white-square)' : 'var(--black-square)'}
           >
-            {color === 'WHITE' ? letters[colIndex] : letters[7 - colIndex]}
+            {color === 'WHITE' ? LETTERS[colIndex] : LETTERS[7 - colIndex]}
           </text>
         {/if}
       {/each}
@@ -208,7 +156,7 @@
           style="transform: translate({colIndex * 100}%, {rowIndex *
             100}%);background-image: url('/pieces/{cell}.png');"
           draggable="true"
-          onmousedown={startDrag}
+          onmousedown={draggable.startDrag.bind(draggable)}
           role="button"
           tabindex={parseInt(`${rowIndex}${colIndex}`)}
         ></div>

@@ -4,13 +4,12 @@ import { browser } from '$app/environment';
 
 const initialValue = browser ? localStorage.getItem("playerId") ?? crypto.randomUUID() : crypto.randomUUID();
 
-const store = writable(initialValue);
+export const playerId = writable(initialValue);
 
 // Subscribe to store changes and update localStorage
-store.subscribe((value) => {
+playerId.subscribe((value) => {
   if (browser) {
     localStorage.setItem("playerId", value as string);
   }
 });
 
-export default store;

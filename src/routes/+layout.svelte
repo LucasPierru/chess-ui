@@ -1,10 +1,13 @@
 <script lang="ts">
-  import favicon from "$lib/assets/favicon.svg";
-  import "../app.css";
-  import { ModeWatcher } from "mode-watcher";
-  import ThemeToggle from "@/components/ui/theme-toggle";
-  import { Toaster } from "$lib/components/ui/sonner/index";
+  import favicon from '$lib/assets/favicon.svg';
+  import '../app.css';
+  import { ModeWatcher } from 'mode-watcher';
+  import ThemeToggle from '@/components/ui/theme-toggle';
+  import { Toaster } from '$lib/components/ui/sonner/index';
+  import { initStomp } from '@/stomp';
+
   let { children } = $props();
+  initStomp();
 </script>
 
 <svelte:head>

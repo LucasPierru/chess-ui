@@ -59,7 +59,7 @@ export const isGameEndedWithDraw = (result: WinnerGameResult | DrawGameResult | 
 
 export type GameEnded = GameEndedWithWinner | GameEndedWithDraw;
 
-export const letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+export const LETTERS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 
 export function getCoordinate(color: Color, xPercent: number, yPercent: number): { col: number; row: number } {
   const row =
